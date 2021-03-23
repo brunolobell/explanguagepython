@@ -1,4 +1,5 @@
 import sys
+sys.path.insert(0, './build')
 from antlr4 import *
 from ExpLexer  import ExpLexer
 from ExpParser import ExpParser
