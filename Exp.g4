@@ -4,7 +4,9 @@ grammar Exp;
 
 @parser::header
 {
+import sys
 symbol_table = []
+variables_used = []
 }
 
 /*---------------- LEXER RULES ----------------*/
@@ -19,8 +21,10 @@ REM   : '%' ;
 OP_PAR: '(' ;
 CL_PAR: ')' ;
 ATTRIB: '=' ;
+COMMA : ',' ;
 
-PRINT: 'print' ;
+PRINT   : 'print' ;
+READ_INT: 'read_int' ;
 
 NUMBER: '0'..'9'+ ;
 
@@ -45,6 +49,7 @@ main:
     {
 print('.method public static main([Ljava/lang/String;)V\n')
 symbol_table.append('args')
+variables_used.append(True)
     }
     ( statement )+
     {
@@ -53,6 +58,9 @@ print('.limit stack 10')
 print('.limit locals', len(symbol_table))
 print('.end method')
 print('\n; symbol_table:', symbol_table)
+if False in variables_used:
+    var_index = variables_used.index(False)
+    raise Exception("Variable '" + symbol_table[var_index] + "' declareted but not used")
     }
     ;
 
@@ -62,9 +70,23 @@ st_print: PRINT OP_PAR
     {
 print('    getstatic java/lang/System/out Ljava/io/PrintStream;')
     }
-    expression CL_PAR
+    expression
     {
 print('    invokevirtual java/io/PrintStream/println(I)V\n')
+    }
+    ( COMMA
+    {
+print('    getstatic java/lang/System/out Ljava/io/PrintStream;')
+    } 
+    expression 
+    {
+print('    invokevirtual java/io/PrintStream/println(I)V\n')
+    }
+    )*
+    CL_PAR
+    {
+print('    getstatic java/lang/System/out Ljava/io/PrintStream;')
+print('    invokevirtual java/io/PrintStream/println()V\n')
     }
     ;
 
@@ -73,6 +95,7 @@ st_attrib: NAME ATTRIB expression
 # testar se a variável existe
 if $NAME.text not in symbol_table:
     symbol_table.append($NAME.text)
+    variables_used.append(False)
 
 # encontrar o index de $NAME.text e gerar bytecode
 index = symbol_table.index($NAME.text)
@@ -104,7 +127,12 @@ print('    ldc ' + $NUMBER.text)
     | NAME
     {
 index = symbol_table.index($NAME.text)
+variables_used[index] = True
 print('    iload', index)
+    }
+    | READ_INT OP_PAR CL_PAR
+    {
+print('     invokestatic Runtime/readInt()I')
     }
     ;
 
